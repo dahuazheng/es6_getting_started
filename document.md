@@ -265,3 +265,230 @@ var getGlobal = function () {
   throw new Error('unable to locate global object');
 };
 ```
+
+## 变量的解构赋值
+
+### 数组的解构赋值
+
+**基本用法**
+
+本质上，这种写法属于“模式匹配”，只要等号两边的模式相同，左边的变量就会被赋予对应的值
+
+```js
+let [foo, [[bar], baz]] = [1, [[2], 3]];
+console.log(foo) // 1
+console.log(bar) // 2
+console.log(baz) // 3
+
+let [head, ...tail] = [1, 2, 3, 4];
+console.log(head) // 1
+console.log(tail) // [2, 3, 4]
+```
+
+如果解构不成功，变量值等于 undefined
+
+```js
+let [foo] = []; // foo -> undefined
+let [bar, foo] = [1]; // foo -> undefined
+```
+
+不完全解构，即等号左边的模式，只匹配一部分的等号右边的数组。这种情况下，解构依然可以成功
+
+```js
+let [a, [b], d] = [1, [2, 3], 4];
+
+// a -> 1
+// b -> 2
+// d -> 4
+```
+
+等号右边不是数组，且不是可遍历的结构
+
+```js
+// 报错
+let [foo] = 1;
+let [foo] = false;
+let [foo] = NaN;
+let [foo] = undefined;
+let [foo] = null;
+let [foo] = {};
+```
+
+只要某种数据结构具有 Iterator 接口，都可以采用数组形式的解构赋值
+
+```js
+let [x, y, z] = new Set(['a', 'b', 'c']);
+
+function* fibs() {
+    let a = 0;
+    let b = 1;
+    while (true) {
+        yield a;
+        [a, b] = [b, a + b];
+    }
+}
+
+let [first, second, third, fourth, fifth, sixth] = fibs();
+// sixth -> 5
+```
+
+**默认值**
+
+解构赋值可以设置默认值
+
+```js
+let [x, y = 'b'] = ['a']; // x -> 'a', y -> 'b'
+let [x, y = 'b'] = ['a', undefined]; // x -> 'a', y -> 'b'
+```
+
+ES6 内部使用严格相等运算符（===），判断一个位置是否有值。所以，只有当一个数组成员严格等于undefined，默认值才会生效。
+
+```js
+let [x = 1] = [null];
+// x -> null
+```
+
+默认值可以是一个表达式
+
+```js
+function f() {
+  console.log('aaa');
+}
+
+let [x = f()] = [1];
+```
+
+### 对象的解构赋值
+
+对象的解构与数组有一个重要的不同。数组的元素是按次序排列的，变量的取值由它的位置决定；而对象的属性没有次序，变量必须与属性同名，才能取到正确的值。
+
+```js
+let { bar, foo } = { foo: 'aaa', bar: 'bbb' };
+// foo -> "aaa"
+// bar -> "bbb"
+
+let { baz } = { foo: 'aaa', bar: 'bbb' };
+// baz -> undefined
+```
+
+嵌套解构赋值
+
+```js
+let obj = {};
+let arr = [];
+
+({ foo: obj.prop, bar: arr[0] } = { foo: 123, bar: true });
+
+// obj -> {prop:123}
+// arr -> [true]
+```
+
+解构模式是嵌套的对象，而且子对象所在的父属性不存在，那么将会报错
+
+```js
+// 报错
+let {foo: {bar}} = {baz: 'baz'};
+```
+
+指定默认值
+
+```js
+var {x, y = 5} = {x: 1};
+// x -> 1
+// y -> 5
+```
+
+默认值生效的条件是，对象的属性值严格等于undefined
+
+```js
+var {x = 3} = {x: undefined};
+// x -> 3
+
+var {x = 3} = {x: null};
+// x -> null
+```
+
+**注意点**
+
+将已声明的变量用于解构赋值，必须非常小心
+
+```js
+let x;
+({x} = {x: 1});
+```
+
+解构赋值允许等号左边的模式之中，不放置任何变量名
+
+```js
+({} = [true, false]);
+({} = 'abc');
+({} = []);
+```
+
+由于数组本质是特殊的对象，因此可以对数组进行对象属性的解构
+
+```js
+let arr = [1, 2, 3];
+let {0 : first, [arr.length - 1] : last} = arr;
+first // 1
+last // 3
+```
+
+### 字符串的解构赋值
+
+```js
+const [a, b, c, d, e] = 'hello';
+// a -> "h"
+// b -> "e"
+// c -> "l"
+// d -> "l"
+// e -> "o"
+```
+
+```js
+let {length : len} = 'hello';
+// len -> 5
+```
+
+### 数值和布尔值的解构赋值
+
+解构赋值时，如果等号右边是数值和布尔值，则会先转为对象
+
+```js
+let {toString: s} = 123;
+s === Number.prototype.toString // true
+
+let {toString: s} = true;
+s === Boolean.prototype.toString // true
+```
+
+解构赋值的规则是，只要等号右边的值不是对象或数组，就先将其转为对象。由于undefined和null无法转为对象，所以对它们进行解构赋值，都会报错。
+
+### 函数参数解构赋值
+
+```js
+function move({x = 0, y = 0} = {}) {
+  return [x, y];
+}
+
+move({x: 3, y: 8}); // [3, 8]
+move({x: 3}); // [3, 0]
+move({}); // [0, 0]
+move(); // [0, 0]
+```
+
+```js
+function move({x, y} = { x: 0, y: 0 }) {
+  return [x, y];
+}
+
+move({x: 3, y: 8}); // [3, 8]
+move({x: 3}); // [3, undefined]
+move({}); // [undefined, undefined]
+move(); // [0, 0]
+```
+
+### 圆括号问题
+
+不能使用圆括号的情况
+
